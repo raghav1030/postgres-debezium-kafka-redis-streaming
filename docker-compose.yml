@@ -16,7 +16,8 @@ services:
 
   kafka:
     image: confluentinc/cp-enterprise-kafka:5.5.3
-    depends_on: [zookeeper]
+    depends_on: 
+      - zookeeper
     environment:
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
@@ -37,7 +38,8 @@ services:
       VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
       CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-    depends_on: [kafka]
+    depends_on: 
+      - kafka
     ports:
       - 8083:8083
 
@@ -49,4 +51,27 @@ services:
       - SCHEMA_REGISTRY_LISTENERS=http://schema-registry:8081,http://localhost:8081
     ports:
       - 8081:8081
-    depends_on: [zookeeper, kafka]
+    depends_on: 
+      - zookeeper
+      - kafka
+
+  node-backend:
+    image: node:18
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: yarn start
+    environment:
+      - NODE_ENV=development
+    ports:
+      - 3000:3000
+    depends_on: 
+      - postgres
+      - kafka
+      - debezium
+      - redis
+
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379:6379
