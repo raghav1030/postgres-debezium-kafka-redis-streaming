@@ -55,16 +55,18 @@ services:
       - zookeeper
       - kafka
 
-  node-backend:
-    image: node:18
+  golang-service:
+    image: golang:alpine
     working_dir: /app
     volumes:
-      - ./backend:/app
-    command: yarn start
+      - ./cmd:/app
+    command: go run main.go
     environment:
-      - NODE_ENV=development
+      - REDIS_URL=redis:6379
+      - POSTGRES_URL=postgres://docker:docker@postgres:5432/exampledb
+      - KAFKA_BROKER_URL=kafka:9092
     ports:
-      - 3000:3000
+      - 8080:8080
     depends_on: 
       - postgres
       - kafka
@@ -75,3 +77,51 @@ services:
     image: redis:alpine
     ports:
       - 6379:6379
+
+  # node-backend:
+  #   image: node:18
+  #   working_dir: /app
+  #   volumes:
+  #     - ./backend:/app
+  #   command: yarn start
+  #   environment:
+  #     - NODE_ENV=development
+  #   ports:
+  #     - 3000:3000
+  #   depends_on: 
+  #     - postgres
+  #     - kafka
+  #     - debezium
+  #     - redis
+
+  # redis:
+  #   image: redis:alpine
+  #   ports:
+  #     - 6379:6379
+
+
+
+
+
+# curl --location 'http://localhost:8083/connectors' \
+# --header 'Content-Type: application/json' \
+# --data '{
+#   "name": "exampledb-connector",
+#   "config": {
+#     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+#     "plugin.name": "pgoutput",
+#     "database.hostname": "postgres",
+#     "database.port": "5432",
+#     "database.user": "docker",
+#     "database.password": "docker",
+#     "database.dbname": "exampledb",
+#     "database.server.name": "postgres",
+#     "table.include.list": "public.student"
+#   }
+# }'
+
+# ALTER TABLE public.student REPLICA IDENTITY FULL;
+
+
+
+# docker run --tty --network postgres-debezium-kafka-redis-streaming_default   confluentinc/cp-kafkacat   kafkacat -C -b kafka:9092   -s key=s -s value=avro -r http://schema-registry:8081   -t postgres.public.student
