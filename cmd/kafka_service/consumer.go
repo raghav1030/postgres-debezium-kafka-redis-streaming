@@ -21,7 +21,6 @@ func StartConsumerService() error {
 
 	workerURL := []string{"kafka:9092"}
 	worker, err := connectWorker(workerURL)
-
 	if err != nil {
 		return err
 	}
@@ -36,7 +35,7 @@ func StartConsumerService() error {
 		return err
 	}
 
-	fmt.Println("consumer started")
+	fmt.Println("Consumer started")
 
 	signchan := make(chan os.Signal, 1)
 	signal.Notify(signchan, syscall.SIGINT, syscall.SIGTERM)
@@ -46,7 +45,7 @@ func StartConsumerService() error {
 	commentMessageCount := 0
 	testMessageCount := 0
 
-	studentValueSchema, err := getSchema("http://schema-registry:8081", `"postgres.public.student-value"`)
+	studentValueSchema, err := getSchema("http://schema-registry:8081", "postgres.public.student-value")
 	if err != nil {
 		fmt.Println("Error:", err)
 		return err
@@ -54,7 +53,7 @@ func StartConsumerService() error {
 
 	codec, err := goavro.NewCodec(studentValueSchema)
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("Error creating Avro codec:", err)
 		return err
 	}
 
@@ -62,18 +61,18 @@ func StartConsumerService() error {
 		for {
 			select {
 			case err := <-consumer1.Errors():
-				fmt.Println(err)
+				fmt.Println("Consumer1 error:", err)
 
 			case err := <-consumer2.Errors():
-				fmt.Println(err)
+				fmt.Println("Consumer2 error:", err)
 
 			case cmtMsg := <-consumer1.Messages():
 				commentMessageCount++
-				fmt.Printf("Received message Count: %d | Topic: %s | Message: %s\n ", commentMessageCount, string(cmtMsg.Topic), string(cmtMsg.Value))
+				fmt.Printf("Received comment message Count: %d | Topic: %s | Message: %s\n", commentMessageCount, string(cmtMsg.Topic), string(cmtMsg.Value))
 
 			case testMsg := <-consumer2.Messages():
 				testMessageCount++
-				fmt.Println(reflect.TypeOf(testMsg.Value))
+				fmt.Println("Received Avro message type:", reflect.TypeOf(testMsg.Value))
 
 				// Decode Avro-encoded message
 				native, _, err := codec.NativeFromBinary(testMsg.Value)
@@ -89,7 +88,7 @@ func StartConsumerService() error {
 					continue
 				}
 
-				fmt.Printf("Received message Count: %d | Topic: %s | Message: %s\n ", testMessageCount, string(testMsg.Topic), string(jsonData))
+				fmt.Printf("Received student message Count: %d | Topic: %s | Message: %s\n", testMessageCount, string(testMsg.Topic), string(jsonData))
 
 			case <-signchan:
 				fmt.Println("Interruption detected")
@@ -104,19 +103,6 @@ func StartConsumerService() error {
 	}
 
 	return nil
-}
-
-func connectWorker(workerURL []string) (sarama.Consumer, error) {
-	config := sarama.NewConfig()
-	config.Consumer.Return.Errors = true
-
-	conn, err := sarama.NewConsumer(workerURL, config)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-
-	return conn, nil
 }
 
 func getSchema(schemaRegistryURL, subject string) (string, error) {
@@ -135,5 +121,20 @@ func getSchema(schemaRegistryURL, subject string) (string, error) {
 		return "", err
 	}
 
+	fmt.Println("Schema response:", string(body)) // Debug line
+
 	return string(body), nil
+}
+
+func connectWorker(workerURL []string) (sarama.Consumer, error) {
+	config := sarama.NewConfig()
+	config.Consumer.Return.Errors = true
+
+	conn, err := sarama.NewConsumer(workerURL, config)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return conn, nil
 }
